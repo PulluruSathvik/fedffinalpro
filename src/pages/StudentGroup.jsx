@@ -1,65 +1,101 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import {
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  serverTimestamp,
+} from "firebase/firestore";
+import { db } from "../firebaseConfig";
 
+// Sidebar items
 const sidebarItems = [
   { icon: "fa-home", label: "Dashboard", route: "/student-dashboard" },
+  { icon: "fa-bolt", label: "Streaks", route: "/student-streaks" },
   { icon: "fa-users", label: "My Group", route: "/student-group" },
   { icon: "fa-folder", label: "My Projects", route: "/student-projects" },
-  { icon: "fa-list-check", label: "Assignments", route: "/student-assignments" },
   { icon: "fa-flag", label: "Milestones", route: "/student-milestones" },
   { icon: "fa-file-alt", label: "Progress Report", route: "/student-report" },
   { icon: "fa-folder-open", label: "Resources", route: "/student-resources" },
   { icon: "fa-cog", label: "Settings", route: "/student-settings" },
-  { icon: "fa-sign-out-alt", label: "Logout", route: "/login" }
+  { icon: "fa-sign-out-alt", label: "Logout", route: "/login" },
 ];
 
+// Static dummy data
 const groupMembers = [
   { name: "John Doe", role: "Leader" },
   { name: "Jane Smith", role: "Member" },
   { name: "Michael Lee", role: "Member" },
-  { name: "Emily Davis", role: "Member" }
-];
-
-const initialMessages = [
-  { sender: "John", text: "Let's finalize the design today." },
-  { sender: "Jane", text: "I uploaded the draft document." }
+  { name: "Emily Davis", role: "Member" },
 ];
 
 const tasks = [
   { task: "Design Document", assigned: "John", status: "Completed" },
   { task: "Prototype", assigned: "Jane", status: "In Progress" },
-  { task: "Testing", assigned: "Michael", status: "Pending" }
+  { task: "Testing", assigned: "Michael", status: "Pending" },
 ];
 
 const statusColor = (status) =>
   status === "Completed"
-    ? { color: "#ffc72c", fontWeight: "bold" } // Bright yellow
+    ? { color: "#ffc72c", fontWeight: "bold" }
     : status === "In Progress"
-    ? { color: "#FCCF21", fontWeight: "bold" } // Slightly darker yellow
-    : { color: "#FF5C5C", fontWeight: "bold" }; // Red
+    ? { color: "#FCCF21", fontWeight: "bold" }
+    : { color: "#FF5C5C", fontWeight: "bold" };
 
 const StudentGroup = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [messages, setMessages] = useState(initialMessages);
+
+  const [messages, setMessages] = useState([]);      // now comes from Firestore
   const [message, setMessage] = useState("");
   const inputRef = useRef(null);
 
+  // Load Font Awesome once
   useEffect(() => {
     if (!document.getElementById("fa-cdn")) {
       const link = document.createElement("link");
       link.rel = "stylesheet";
-      link.href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css";
+      link.href =
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css";
       link.id = "fa-cdn";
       document.head.appendChild(link);
     }
   }, []);
 
-  const handleSend = () => {
-    if (message.trim()) {
-      setMessages([...messages, { sender: "You", text: message }]);
+  // Realtime listener to Firestore "groupMessages" collection
+  useEffect(() => {
+    const q = query(
+      collection(db, "groupMessages"),
+      orderBy("createdAt", "asc")
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const msgs = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setMessages(msgs);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Send message: write to Firestore
+  const handleSend = async () => {
+    const trimmed = message.trim();
+    if (!trimmed) return;
+
+    try {
+      await addDoc(collection(db, "groupMessages"), {
+        sender: "Student",          // you can later use real user name / UID
+        text: trimmed,
+        createdAt: serverTimestamp(),
+      });
       setMessage("");
       inputRef.current?.focus();
+    } catch (err) {
+      console.error("Error sending message:", err);
     }
   };
 
@@ -78,6 +114,7 @@ const StudentGroup = () => {
           />
         ))}
       </div>
+
       <div style={styles.contentArea}>
         <div style={styles.topBar}>
           <h1 style={styles.title}>Group Collaboration</h1>
@@ -93,10 +130,14 @@ const StudentGroup = () => {
                 className="fas fa-user-alt"
                 style={{ color: "#ffc72c", fontSize: 56, marginBottom: 12 }}
               />
-              <div style={{ fontWeight: "bold", fontSize: 22, color: "#222" }}>
+              <div
+                style={{ fontWeight: "bold", fontSize: 22, color: "#222" }}
+              >
                 {m.name}
               </div>
-              <div style={{ color: "#999", fontSize: 18, marginTop: 2 }}>
+              <div
+                style={{ color: "#999", fontSize: 18, marginTop: 2 }}
+              >
                 {m.role}
               </div>
             </div>
@@ -106,11 +147,13 @@ const StudentGroup = () => {
         <div style={styles.chatBox}>
           <h2 style={styles.centerHeader}>Project Discussion</h2>
           <div style={styles.chatDiscussion}>
-            {messages.map((msg, idx) => (
-              <div key={idx} style={{ marginBottom: 8, color: "#222" }}>
-                <span style={{ fontWeight: "bold", color: "#ffc72c" }}>
-                  {msg.sender}:
-                </span>{" "}
+            {messages.map((msg) => (
+              <div key={msg.id} style={{ marginBottom: 8, color: "#222" }}>
+                <span
+                  style={{ fontWeight: "bold", color: "#ffc72c", marginRight: 4 }}
+                >
+                  {msg.sender || "User"}:
+                </span>
                 <span>{msg.text}</span>
               </div>
             ))}
@@ -135,13 +178,31 @@ const StudentGroup = () => {
           <table style={styles.table}>
             <thead>
               <tr>
-                <th style={{ ...styles.th, backgroundColor: "#ffc72c", color: "#222" }}>
+                <th
+                  style={{
+                    ...styles.th,
+                    backgroundColor: "#ffc72c",
+                    color: "#222",
+                  }}
+                >
                   Task
                 </th>
-                <th style={{ ...styles.th, backgroundColor: "#ffc72c", color: "#222" }}>
+                <th
+                  style={{
+                    ...styles.th,
+                    backgroundColor: "#ffc72c",
+                    color: "#222",
+                  }}
+                >
                   Assigned To
                 </th>
-                <th style={{ ...styles.th, backgroundColor: "#ffc72c", color: "#222" }}>
+                <th
+                  style={{
+                    ...styles.th,
+                    backgroundColor: "#ffc72c",
+                    color: "#222",
+                  }}
+                >
                   Status
                 </th>
               </tr>
@@ -151,7 +212,9 @@ const StudentGroup = () => {
                 <tr key={i}>
                   <td style={{ ...styles.td, color: "#222" }}>{t.task}</td>
                   <td style={{ ...styles.td, color: "#222" }}>{t.assigned}</td>
-                  <td style={{ ...styles.td, ...statusColor(t.status) }}>{t.status}</td>
+                  <td style={{ ...styles.td, ...statusColor(t.status) }}>
+                    {t.status}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -209,7 +272,7 @@ const styles = {
   sidebarIcon: {
     fontSize: 20,
     minWidth: 24,
-    color: "#fff"
+    color: "#fff",
   },
   contentArea: {
     flexGrow: 1,
@@ -322,7 +385,7 @@ const styles = {
     fontSize: 17,
     backgroundColor: "#fff",
     borderTop: "1px solid #ececec",
-  }
+  },
 };
 
 export default StudentGroup;
