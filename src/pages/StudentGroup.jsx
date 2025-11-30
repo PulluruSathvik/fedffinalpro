@@ -1,15 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import {
-  collection,
-  addDoc,
-  onSnapshot,
-  query,
-  orderBy,
-  serverTimestamp,
-} from "firebase/firestore";
-import { db } from "../firebaseConfig";
 
+// Sidebar items
 const sidebarItems = [
   { icon: "fa-home", label: "Dashboard", route: "/student-dashboard" },
   { icon: "fa-bolt", label: "Streaks", route: "/student-streaks" },
@@ -22,6 +14,7 @@ const sidebarItems = [
   { icon: "fa-sign-out-alt", label: "Logout", route: "/login" },
 ];
 
+// Static dummy data
 const groupMembers = [
   { name: "John Doe", role: "Leader" },
   { name: "Jane Smith", role: "Member" },
@@ -46,10 +39,14 @@ const StudentGroup = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState([
+    { id: 1, sender: "Alice", text: "Hey team, any updates?" },
+    { id: 2, sender: "Bob", text: "Working on the prototype today." },
+  ]);
   const [message, setMessage] = useState("");
   const inputRef = useRef(null);
 
+  // Load Font Awesome once
   useEffect(() => {
     if (!document.getElementById("fa-cdn")) {
       const link = document.createElement("link");
@@ -61,37 +58,18 @@ const StudentGroup = () => {
     }
   }, []);
 
-  useEffect(() => {
-    const q = query(
-      collection(db, "groupMessages"),
-      orderBy("createdAt", "asc")
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setMessages(msgs);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  const handleSend = async () => {
+  const handleSend = () => {
     const trimmed = message.trim();
     if (!trimmed) return;
 
-    try {
-      await addDoc(collection(db, "groupMessages"), {
-        sender: "Student",
-        text: trimmed,
-        createdAt: serverTimestamp(),
-      });
-      setMessage("");
-      inputRef.current?.focus();
-    } catch (err) {
-      console.error("Error sending message:", err);
-    }
+    const newMsg = {
+      id: Date.now(),
+      sender: "You",
+      text: trimmed,
+    };
+    setMessages((prev) => [...prev, newMsg]);
+    setMessage("");
+    inputRef.current?.focus();
   };
 
   return (
@@ -149,7 +127,7 @@ const StudentGroup = () => {
                     marginRight: 4,
                   }}
                 >
-                  {msg.sender || "User"}:
+                  {msg.sender}:
                 </span>
                 <span>{msg.text}</span>
               </div>

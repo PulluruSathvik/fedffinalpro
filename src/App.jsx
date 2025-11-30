@@ -1,6 +1,5 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 
-// Imports all pages
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import RegSuccess from "./pages/RegSuccess";
@@ -12,7 +11,7 @@ import StudentProjects from "./pages/StudentProjects";
 import StudentReport from "./pages/StudentReport";
 import StudentResources from "./pages/StudentResources";
 import StudentSettings from "./pages/StudentSettings";
-import StudentStreaks from "./pages/StudentStreaks";   // NEW
+import StudentStreaks from "./pages/StudentStreaks";
 
 import TCheckGroup from "./pages/TCheckGroup";
 import TDashboard from "./pages/TDashboard";
@@ -25,38 +24,36 @@ import Corrections from "./pages/Corrections";
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        {/* Default route to show Login page */}
-        <Route path="/" element={<Login />} />
+    <Routes>
+      {/* Default route */}
+      <Route path="/" element={<Login />} />
 
-        {/* Auth */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/regsuccess" element={<RegSuccess />} />
+      {/* Auth */}
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/regsuccess" element={<RegSuccess />} />
 
-        {/* Student */}
-        <Route path="/student-dashboard" element={<StudentDashboard />} />
-        <Route path="/student-assignments" element={<StudentAssignments />} />
-        <Route path="/student-group" element={<StudentGroup />} />
-        <Route path="/student-milestones" element={<StudentMilestones />} />
-        <Route path="/student-projects" element={<StudentProjects />} />
-        <Route path="/student-report" element={<StudentReport />} />
-        <Route path="/student-resources" element={<StudentResources />} />
-        <Route path="/student-settings" element={<StudentSettings />} />
-        <Route path="/student-streaks" element={<StudentStreaks />} /> {/* NEW */}
+      {/* Student */}
+      <Route path="/student-dashboard" element={<StudentDashboard />} />
+      <Route path="/student-assignments" element={<StudentAssignments />} />
+      <Route path="/student-group" element={<StudentGroup />} />
+      <Route path="/student-milestones" element={<StudentMilestones />} />
+      <Route path="/student-projects" element={<StudentProjects />} />
+      <Route path="/student-report" element={<StudentReport />} />
+      <Route path="/student-resources" element={<StudentResources />} />
+      <Route path="/student-settings" element={<StudentSettings />} />
+      <Route path="/student-streaks" element={<StudentStreaks />} />
 
-        {/* Teacher */}
-        <Route path="/tdashboard" element={<TDashboard />} />
-        <Route path="/tcheckgroup" element={<TCheckGroup />} />
-        <Route path="/teachers-messages" element={<TeacherMessages />} />
-        <Route path="/teacher-resources" element={<TeacherResources />} />
-        <Route path="/tprofile" element={<TProfile />} />
-        <Route path="/view-students" element={<ViewStudents />} />
-        <Route path="/assign-project" element={<AssignProject />} />
-        <Route path="/corrections" element={<Corrections />} />
-      </Routes>
-    </Router>
+      {/* Teacher */}
+      <Route path="/tdashboard" element={<TDashboard />} />
+      <Route path="/tcheckgroup" element={<TCheckGroup />} />
+      <Route path="/teachers-messages" element={<TeacherMessages />} />
+      <Route path="/teacher-resources" element={<TeacherResources />} />
+      <Route path="/tprofile" element={<TProfile />} />
+      <Route path="/view-students" element={<ViewStudents />} />
+      <Route path="/assign-project" element={<AssignProject />} />
+      <Route path="/corrections" element={<Corrections />} />
+    </Routes>
   );
 }
 
