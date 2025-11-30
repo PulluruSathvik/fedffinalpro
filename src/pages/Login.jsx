@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 const studentBg = "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=1350&q=80";
@@ -10,11 +10,17 @@ const Login = () => {
   const [selectedRole, setSelectedRole] = useState(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [captchaText, setCaptchaText] = useState("");
+  const [userCaptcha, setUserCaptcha] = useState("");
+  const [captchaError, setCaptchaError] = useState("");
+  const [isCaptchaValid, setIsCaptchaValid] = useState(false);
+  const canvasRef = useRef(null);
 
   useEffect(() => {
     document.documentElement.style.height = "100%";
     document.body.style.height = "100%";
     document.body.style.margin = "0";
+    generateCaptcha();
     return () => {
       document.documentElement.style.height = "";
       document.body.style.height = "";
@@ -22,11 +28,71 @@ const Login = () => {
     };
   }, []);
 
+  const generateCaptcha = () => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let result = "";
+    for (let i = 0; i < 6; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setCaptchaText(result);
+    drawCaptcha(result);
+  };
+
+  const drawCaptcha = (text) => {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#f8f9fa";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Add noise lines
+      ctx.strokeStyle = "#dee2e6";
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 50; i++) {
+        ctx.beginPath();
+        ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
+        ctx.lineTo(Math.random() * canvas.width, Math.random() * canvas.height);
+        ctx.stroke();
+      }
+
+      // Draw text with distortion
+      ctx.font = "bold 24px Poppins, sans-serif";
+      ctx.fillStyle = "#495057";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "center";
+      
+      const chars = text.split("");
+      chars.forEach((char, index) => {
+        ctx.save();
+        ctx.translate(30 + index * 25, 30);
+        ctx.rotate((Math.random() - 0.5) * 0.3);
+        ctx.fillText(char, 0, 0);
+        ctx.restore();
+      });
+    }
+  };
+
+  const validateCaptcha = () => {
+    if (userCaptcha.toUpperCase() === captchaText) {
+      setCaptchaError("");
+      setIsCaptchaValid(true);
+    } else {
+      setCaptchaError("Invalid captcha. Try again.");
+      setUserCaptcha("");
+      setIsCaptchaValid(false);
+      generateCaptcha();
+    }
+  };
+
   const selectRole = (role) => {
     setSelectedRole(role);
     setStep("loginForm");
     setEmail("");
     setPassword("");
+    setUserCaptcha("");
+    setCaptchaError("");
+    setIsCaptchaValid(false);
+    generateCaptcha();
   };
 
   const backToRoleSelect = () => {
@@ -34,10 +100,19 @@ const Login = () => {
     setStep("roleSelection");
     setEmail("");
     setPassword("");
+    setUserCaptcha("");
+    setCaptchaError("");
+    setIsCaptchaValid(false);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    if (!isCaptchaValid) {
+      setCaptchaError("Please verify you're not a robot.");
+      return;
+    }
+
     if (
       (selectedRole === "student" && email === "student@test.com" && password === "1234") ||
       (selectedRole === "teacher" && email === "teacher@test.com" && password === "1234")
@@ -106,6 +181,7 @@ const Login = () => {
             <h2 style={{ ...styles.formTitle, color: selectedRole === "teacher" ? "#ffc72c" : "#222" }}>
               {selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)} Login
             </h2>
+            
             <input
               style={styles.input}
               type="email"
@@ -115,6 +191,7 @@ const Login = () => {
               autoFocus
               required
             />
+            
             <input
               style={styles.input}
               type="password"
@@ -123,18 +200,77 @@ const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
-            <button style={styles.loginBtn} type="submit">
+
+            {/* Captcha Section - FIXED */}
+            <div style={styles.captchaContainer}>
+              <div style={styles.captchaWrapper}>
+                <canvas
+                  ref={canvasRef}
+                  width={160}
+                  height={60}
+                  style={styles.captchaCanvas}
+                  role="img"
+                  aria-label="Captcha image"
+                  onClick={generateCaptcha}
+                />
+                <button
+                  type="button"
+                  style={styles.refreshBtn}
+                  onClick={generateCaptcha}
+                  aria-label="Refresh captcha"
+                >
+                  🔄
+                </button>
+              </div>
+              
+              <div style={styles.captchaInputWrapper}>
+                <input
+                  style={{ ...styles.input, ...styles.captchaInput }}
+                  type="text"
+                  placeholder="Enter captcha"
+                  value={userCaptcha}
+                  onChange={(e) => setUserCaptcha(e.target.value.toUpperCase())}
+                  maxLength={6}
+                  autoComplete="off"
+                />
+                <button 
+                  type="button"
+                  style={styles.verifyBtn} 
+                  onClick={validateCaptcha}
+                  disabled={userCaptcha.length < 6}
+                >
+                  Verify
+                </button>
+              </div>
+              
+              {captchaError && (
+                <p style={styles.captchaError}>{captchaError}</p>
+              )}
+              
+              {isCaptchaValid && (
+                <p style={styles.captchaSuccess}>✓ Captcha verified successfully!</p>
+              )}
+            </div>
+
+            <button 
+              style={{ 
+                ...styles.loginBtn, 
+                opacity: isCaptchaValid ? 1 : 0.6,
+                cursor: isCaptchaValid ? "pointer" : "not-allowed"
+              }} 
+              type="submit"
+              disabled={!isCaptchaValid}
+            >
               Login
             </button>
+            
             <button style={styles.backBtn} type="button" onClick={backToRoleSelect}>
               ← Change Role
             </button>
+            
             <p style={{ marginTop: "1.5rem", color: selectedRole === "teacher" ? "#ffc72c" : "#222" }}>
-              Don’t have an account?{" "}
-              <span
-                style={styles.registerLink}
-                onClick={() => navigate("/register")}
-              >
+              Don't have an account?{" "}
+              <span style={styles.registerLink} onClick={() => navigate("/register")}>
                 Register here
               </span>
             </p>
@@ -236,7 +372,8 @@ const styles = {
     outline: "none",
     color: "#18202a",
     caretColor: "#ffc72c",
-    backgroundColor: "#fff", // Ensures text is always visible!
+    backgroundColor: "#fff",
+    transition: "border-color 0.2s ease, box-shadow 0.2s ease",
   },
   loginBtn: {
     padding: "16px 0",
@@ -248,6 +385,7 @@ const styles = {
     fontSize: "1.3rem",
     cursor: "pointer",
     boxShadow: "0 5px 15px rgba(255, 199, 44, 0.6)",
+    transition: "all 0.2s ease",
   },
   backBtn: {
     marginTop: 8,
@@ -263,6 +401,75 @@ const styles = {
     color: "#ffc72c",
     cursor: "pointer",
     fontWeight: 700,
+  },
+  // Captcha Styles
+  captchaContainer: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "1rem",
+  },
+  captchaWrapper: {
+    display: "flex",
+    alignItems: "center",
+    gap: "1rem",
+  },
+  captchaCanvas: {
+    border: "2px solid #e9ecef",
+    borderRadius: 8,
+    cursor: "pointer",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+    transition: "all 0.2s ease",
+  },
+  refreshBtn: {
+    width: 44,
+    height: 44,
+    border: "2px solid #ffc72c",
+    backgroundColor: "#fff",
+    borderRadius: "50%",
+    cursor: "pointer",
+    fontSize: "1.2rem",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    transition: "all 0.2s ease",
+    boxShadow: "0 2px 8px rgba(255, 199, 44, 0.3)",
+  },
+  captchaInputWrapper: {
+    display: "flex",
+    gap: "1rem",
+  },
+  captchaInput: {
+    flex: 1,
+    textTransform: "uppercase",
+    letterSpacing: "2px",
+    fontWeight: 600,
+  },
+  verifyBtn: {
+    minWidth: 80,
+    padding: "16px 12px",
+    borderRadius: 12,
+    border: "none",
+    backgroundColor: "#ffc72c",
+    color: "#222",
+    fontWeight: 700,
+    fontSize: "0.95rem",
+    cursor: "pointer",
+    boxShadow: "0 3px 10px rgba(255, 199, 44, 0.4)",
+    transition: "all 0.2s ease",
+  },
+  captchaError: {
+    color: "#dc3545",
+    fontSize: "0.9rem",
+    fontWeight: 500,
+    margin: 0,
+    textAlign: "center",
+  },
+  captchaSuccess: {
+    color: "#28a745",
+    fontSize: "0.9rem",
+    fontWeight: 500,
+    margin: 0,
+    textAlign: "center",
   },
 };
 

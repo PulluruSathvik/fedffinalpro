@@ -44,15 +44,16 @@ const statusColor = {
 
 const sidebarItems = [
   { icon: "fa-home", label: "Dashboard", route: "/student-dashboard" },
+  { icon: "fa-bolt", label: "Streaks", route: "/student-streaks" },   // NEW
   { icon: "fa-users", label: "My Group", route: "/student-group" },
   { icon: "fa-folder", label: "My Projects", route: "/student-projects" },
-  { icon: "fa-list-check", label: "Assignments", route: "/student-assignments" },
   { icon: "fa-flag", label: "Milestones", route: "/student-milestones" },
   { icon: "fa-file-alt", label: "Progress Report", route: "/student-report" },
   { icon: "fa-folder-open", label: "Resources", route: "/student-resources" },
   { icon: "fa-cog", label: "Settings", route: "/student-settings" },
-  { icon: "fa-sign-out-alt", label: "Logout", route: "/login" },
+  { icon: "fa-sign-out-alt", label: "Logout", route: "/login" }
 ];
+
 
 export default function StudentAssignments() {
   const [files, setFiles] = useState({});

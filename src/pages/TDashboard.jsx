@@ -1,57 +1,47 @@
+// src/pages/TDashboard.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../api"; // ensure src/api.js exists
+// NOTE: Not using ThemeContext here to avoid import errors if you don't have it.
 
 const sidebarItems = [
   { icon: "fa-home", label: "Dashboard", route: "/tdashboard" },
   { icon: "fa-users", label: "View groups", route: "/tcheckgroup" },
   { icon: "fa-folder-open", label: "Resources", route: "/teacher-resources" },
-  { icon: "fa-tasks", label: "Assign project", route: "/assign-project" },
-  { icon: "fa-user-graduate", label: "View Students", route: "/view-students" },
+  { icon: "fa-home", label: "Assign project", route: "/assign-project" },
+  { icon: "fa-users", label: "View Students", route: "/view-students" },
   { icon: "fa-envelope", label: "Messages", route: "/teachers-messages" },
   { icon: "fa-user", label: "Profile", route: "/tprofile" },
   { icon: "fa-undo", label: "Correction", route: "/corrections" },
   { icon: "fa-sign-out-alt", label: "Logout", route: "/login" }
 ];
 
-const dashboardStats = [
-  { icon: "fa-graduation-cap", value: 120, label: "Total Students" },
-  { icon: "fa-book", value: 15, label: "Active Projects" },
-  { icon: "fa-list-check", value: 5, label: "Pending Tasks" },
-  { icon: "fa-envelope", value: 8, label: "Unread Messages" }
-];
-
-const initialGroups = [
-  { group: "Group 1", project: "AI Chatbot", status: "Completed", progress: 100, grade: "A+" },
-  { group: "Group 2", project: "Web Portal", status: "In Progress", progress: 60, grade: "" },
-  { group: "Group 3", project: "Data Analysis", status: "Overdue", progress: 30, grade: "" }
-];
+const ProgressBar = ({ value = 0 }) => (
+  <div style={{ height: 20, borderRadius: 9, background: "#e5e5e5", width: 180, overflow: "hidden" }}>
+    <div
+      style={{
+        height: "100%",
+        width: `${value}%`,
+        background: value === 100 ? "#22c55e" : value > 30 ? "#ffc72c" : "#dc2626",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontWeight: 700,
+        color: "#232b32",
+      }}
+    >
+      {value}%
+    </div>
+  </div>
+);
 
 const TDashboard = () => {
+  const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const [groups] = useState(initialGroups);
-
-  // Animate stats count-up effect
-  const [animatedStats, setAnimatedStats] = useState(dashboardStats.map(() => 0));
-  useEffect(() => {
-    let animationFrame;
-    let start = null;
-    const duration = 1200;
-
-    const step = (timestamp) => {
-      if (!start) start = timestamp;
-      const progress = timestamp - start;
-      const newStats = dashboardStats.map((stat, i) =>
-        Math.min(Math.floor((progress / duration) * stat.value), stat.value)
-      );
-      setAnimatedStats(newStats);
-      if (progress < duration) animationFrame = requestAnimationFrame(step);
-    };
-
-    animationFrame = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(animationFrame);
-  }, []);
 
   useEffect(() => {
+    // Inject Font Awesome once
     if (!document.getElementById("fa-cdn")) {
       const link = document.createElement("link");
       link.rel = "stylesheet";
@@ -61,63 +51,86 @@ const TDashboard = () => {
     }
   }, []);
 
-  // Add slide-in animation on mount
-  const [contentVisible, setContentVisible] = useState(false);
   useEffect(() => {
-    const timer = setTimeout(() => setContentVisible(true), 200);
-    return () => clearTimeout(timer);
+    loadGroups();
   }, []);
 
-  function ProgressBar({ value }) {
-    return (
-      <div
-        style={{
-          height: 20,
-          borderRadius: 12,
-          background: "#e5e5e5",
-          width: 180,
-          overflow: "hidden",
-          boxShadow: "inset 0 1px 3px rgb(0 0 0 / 0.2)",
-        }}
-        aria-label={`Progress: ${value}%`}
-      >
-        <div
-          style={{
-            height: "100%",
-            borderRadius: 12,
-            background:
-              value === 100 ? "linear-gradient(90deg, #22c55e, #16a34a)" :
-              value > 30 ? "linear-gradient(90deg, #ffc72c, #d97706)" :
-              "linear-gradient(90deg, #dc2626, #991b1b)",
-            width: `${value}%`,
-            color: "#232b32",
-            fontWeight: 700,
-            fontSize: 15,
-            textAlign: "center",
-            lineHeight: "20px",
-            transition: "width 1.2s ease",
-            boxShadow: value === 100 ? "0 0 8px #22c55e" : "none",
-            userSelect: "none",
-            textShadow: "0 0 4px rgba(255 255 255 / 0.7)"
-          }}
-        >
-          {value}%
-        </div>
-      </div>
-    );
-  }
+  const loadGroups = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get("/groups");
+      // normalize fallback if API returns different shape
+      const normalized = (res.data || []).map((g) => ({
+        id: g.id ?? g.group ?? Math.random().toString(36).slice(2),
+        group: g.group ?? g.name ?? g.id,
+        project: g.project ?? g.projectName ?? "",
+        status: g.status ?? "In Progress",
+        progress: typeof g.progress === "number" ? g.progress : Number(g.progress) || 0,
+        grade: g.grade ?? "",
+        submissions: g.submissions ?? [],
+      }));
+      setGroups(normalized);
+    } catch (err) {
+      console.error("Failed to load groups:", err);
+      // fallback to some demo data so UI isn't blank
+      setGroups([
+        { id: "g1", group: "Group 1", project: "AI Chatbot", status: "Completed", progress: 100, grade: "A+", submissions: [] },
+        { id: "g2", group: "Group 2", project: "Web Portal", status: "In Progress", progress: 60, grade: "", submissions: [] }
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const getStatusStyle = status =>
+  const handleGradeChangeLocal = (id, newGrade) => {
+    setGroups((prev) => prev.map((g) => (g.id === id ? { ...g, grade: newGrade } : g)));
+  };
+
+  const handleGradeSave = async (id, grade) => {
+    try {
+      await api.post(`/groups/${id}/grade`, { grade });
+      await loadGroups();
+      alert("Grade saved");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save grade");
+    }
+  };
+
+  const handleFileUpload = async (id, file) => {
+    if (!file) return;
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      await api.post(`/groups/${id}/upload`, fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      await loadGroups();
+      alert("File uploaded");
+    } catch (err) {
+      console.error(err);
+      alert("Upload failed");
+    }
+  };
+
+  const getStatusStyle = (status) =>
     status === "Completed"
       ? { color: "#22c55e", fontWeight: 600 }
       : status === "In Progress"
-        ? { color: "#eab308", fontWeight: 600 }
-        : { color: "#dc2626", fontWeight: 600 };
+      ? { color: "#eab308", fontWeight: 600 }
+      : { color: "#dc2626", fontWeight: 600 };
+
+  if (loading) {
+    return <div style={{ padding: 28, fontFamily: "Poppins, sans-serif" }}>Loading dashboard…</div>;
+  }
 
   return (
     <div style={styles.container}>
       <div style={styles.sidebar}>
-        <div style={styles.sidebarHeader}>Teacher Panel</div>
+        <div style={styles.sidebarHeader}>
+          <span style={{ color: "#ffc72c" }}>Teacher Panel</span>
+        </div>
+
         {sidebarItems.map((item) => (
           <SidebarItem
             key={item.label}
@@ -129,60 +142,17 @@ const TDashboard = () => {
         ))}
       </div>
 
-      <div
-        style={{
-          ...styles.contentArea,
-          opacity: contentVisible ? 1 : 0,
-          transform: contentVisible ? "translateX(0)" : "translateX(40px)",
-          transition: "all 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
-        }}
-      >
+      <div style={styles.content}>
         <div style={styles.topBar}>
           <h1 style={styles.title}>Teacher Dashboard</h1>
-          <button style={styles.logoutBtn} onClick={() => navigate("/login")}>
-            Logout
-            <i className="fas fa-right-from-bracket" style={{ marginLeft: 8 }}></i>
-          </button>
-        </div>
-
-        <div style={styles.statsRow}>
-          {dashboardStats.map((stat, i) => (
-            <div key={stat.label} style={styles.statCard}>
-              <i
-                className={`fas ${stat.icon}`}
-                style={{ ...styles.statIcon, filter: "drop-shadow(0 0 2px #ffc72c)" }}
-                aria-hidden="true"
-              ></i>
-              <div>
-                <div
-                  style={{
-                    ...styles.statValue,
-                    color: "#18202a",
-                    transition: "color 0.3s ease",
-                    userSelect: "none",
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                >
-                  {animatedStats[i]}
-                </div>
-                <div style={styles.statLabel}>{stat.label}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div style={styles.cardSection}>
-          <div
-            style={{
-              fontWeight: 700,
-              fontSize: "28px",
-              marginBottom: 14,
-              color: "#18202a",
-              textShadow: "0 1px 1px rgba(0,0,0,0.1)"
-            }}
-          >
-            Recent Group Projects
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <button style={styles.logoutBtn} onClick={() => navigate("/login")}>Logout</button>
           </div>
+        </div>
+
+        <div style={styles.card}>
+          <h2 style={styles.sectionTitle}>Recent Group Projects</h2>
+
           <table style={styles.table}>
             <thead>
               <tr>
@@ -191,62 +161,60 @@ const TDashboard = () => {
                 <th style={styles.th}>Status</th>
                 <th style={styles.th}>Progress</th>
                 <th style={styles.th}>Grade</th>
+                <th style={styles.th}>Upload</th>
+                <th style={styles.th}>Files</th>
               </tr>
             </thead>
+
             <tbody>
               {groups.map((g) => (
-                <tr key={g.group} style={{ transition: "background-color 0.3s", cursor: "default" }} tabIndex={0}>
-                  <td style={{ ...styles.td, color: "#18202a", fontWeight: 600 }}>{g.group}</td>
+                <tr key={g.id}>
+                  <td style={{ ...styles.td, color: "#18202a" }}>{g.group}</td>
                   <td style={{ ...styles.td, color: "#18202a" }}>{g.project}</td>
                   <td style={{ ...styles.td, ...getStatusStyle(g.status) }}>{g.status}</td>
+                  <td style={styles.td}><ProgressBar value={g.progress} /></td>
+
                   <td style={styles.td}>
-                    <ProgressBar value={g.progress} />
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <input
+                        type="text"
+                        value={g.grade ?? ""}
+                        onChange={(e) => handleGradeChangeLocal(g.id, e.target.value)}
+                        style={styles.gradeInput}
+                        placeholder="-"
+                      />
+                      <button style={styles.smallBtn} onClick={() => handleGradeSave(g.id, g.grade ?? "")}>
+                        Save
+                      </button>
+                    </div>
                   </td>
+
                   <td style={styles.td}>
-                    <input
-                      type="text"
-                      value={g.grade}
-                      placeholder="-"
-                      readOnly
-                      style={styles.gradeInput}
-                      aria-label={`${g.group} grade`}
-                    />
+                    <input type="file" onChange={(e) => handleFileUpload(g.id, e.target.files[0])} />
+                  </td>
+
+                  <td style={styles.td}>
+                    {g.submissions?.length === 0 ? "No files" : g.submissions.map((s, i) => (
+                      <div key={i}>{s.originalName ?? s.filename ?? s.name}</div>
+                    ))}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      </div>
+        </div> {/* card */}
+      </div> {/* content */}
     </div>
   );
 };
 
 const SidebarItem = ({ icon, label, active, onClick }) => (
-  // Add hover glow effect and smooth transition on active
-  <div
-    onClick={onClick}
-    title={label}
-    role="button"
-    tabIndex={0}
-    onKeyPress={e => { if (e.key === "Enter") onClick(); }}
-    style={{
-      ...styles.sidebarItem,
-      backgroundColor: active ? "#ffc72c" : "transparent",
-      color: active ? "#18202a" : "#fff",
-      boxShadow: active ? "0 0 10px #ffc72c" : "none",
-      transition: "all 0.3s ease",
-    }}
-  >
-    <i
-      className={`fas ${icon}`}
-      style={{
-        ...styles.sidebarIcon,
-        filter: active ? "drop-shadow(0 0 5px #ffc72c)" : "none",
-        transition: "filter 0.3s ease",
-      }}
-      aria-hidden="true"
-    ></i>
+  <div onClick={onClick} style={{
+    ...styles.sidebarItem,
+    background: active ? "#ffc72c" : "transparent",
+    color: active ? "#18202a" : "#fff",
+  }}>
+    <i className={`fas ${icon}`} style={styles.sidebarIcon} />
     <span>{label}</span>
   </div>
 );
@@ -256,28 +224,26 @@ const styles = {
     display: "flex",
     minHeight: "100vh",
     width: "100vw",
-    background: "linear-gradient(135deg, #f0f2f5, #d9e2ec)",
     fontFamily: "Poppins, sans-serif",
-    overflowX: "hidden",
+    background: "#f6f7f9"
   },
+
   sidebar: {
     width: "320px",
-    background: "linear-gradient(180deg, #171e2b 0%, #25303c 100%)",
+    background: "#18202a",
     paddingTop: "28px",
     display: "flex",
-    flexDirection: "column",
-    boxShadow: "4px 0 15px rgba(0,0,0,0.15)",
-    userSelect: "none",
+    flexDirection: "column"
   },
+
   sidebarHeader: {
     fontWeight: "bold",
-    fontSize: "32px",
+    fontSize: "28px",
     color: "#ffc72c",
     paddingLeft: "28px",
-    marginBottom: "28px",
-    textShadow: "0 0 10px #ffc72c",
-    userSelect: "none",
+    marginBottom: "28px"
   },
+
   sidebarItem: {
     cursor: "pointer",
     padding: "15px 32px",
@@ -285,123 +251,99 @@ const styles = {
     gap: "18px",
     alignItems: "center",
     fontSize: "18px",
-    userSelect: "none",
-    borderRadius: "8px",
-    margin: "6px 14px",
+    userSelect: "none"
   },
+
   sidebarIcon: {
     fontSize: "20px",
     width: "24px",
     minWidth: "24px",
+    color: "inherit"
   },
-  contentArea: {
-    flexGrow: 1,
-    padding: "36px 50px",
-    overflowY: "auto",
-    boxShadow: "0 0 25px rgba(0,0,0,0.05)",
-    borderRadius: "18px",
-    backgroundColor: "#fff",
-    margin: "30px",
+
+  content: {
+    flex: 1,
+    padding: "38px 34px 30px 40px"
   },
+
   topBar: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "36px",
+    alignItems: "center"
   },
+
   title: {
-    fontWeight: 800,
-    fontSize: "42px",
+    fontWeight: 700,
+    fontSize: "36px",
     color: "#18202a",
-    margin: 0,
-    letterSpacing: "0.1em",
-    textShadow: "1px 1px 2px rgba(0,0,0,0.12)",
+    margin: 0
   },
+
   logoutBtn: {
-    background: "linear-gradient(90deg, #ffc72c, #d29e00)",
+    background: "#ffc72c",
     color: "#222",
     border: "none",
-    borderRadius: "14px",
-    padding: "12px 30px",
+    borderRadius: "10px",
+    padding: "10px 20px",
+    fontWeight: 600,
+    fontSize: "16px",
+    cursor: "pointer"
+  },
+
+  card: {
+    background: "#fff",
+    borderRadius: "16px",
+    boxShadow: "0 8px 24px rgba(17,38,146,.06)",
+    padding: "18px",
+    marginTop: "26px"
+  },
+
+  sectionTitle: {
+    fontSize: "20px",
     fontWeight: 700,
-    fontSize: "18px",
-    cursor: "pointer",
-    boxShadow: "0 4px 10px rgba(255, 199, 44,0.7)",
-    transition: "background-color 0.3s ease",
+    marginBottom: 12,
+    color: "#18202a"
   },
-  statsRow: {
-    display: "flex",
-    gap: "34px",
-    marginBottom: "28px",
-  },
-  statCard: {
-    flex: 1,
-    background: "#fff",
-    borderRadius: "20px",
-    display: "flex",
-    alignItems: "center",
-    boxShadow: "0 8px 24px rgba(17, 38, 146, .15)",
-    gap: "22px",
-    padding: "28px 30px",
-    cursor: "default",
-    userSelect: "none",
-    transition: "transform 0.3s ease",
-  },
-  statIcon: {
-    fontSize: "42px",
-    color: "#ffc72c",
-  },
-  statValue: {
-    fontWeight: 900,
-    fontSize: "30px",
-  },
-  statLabel: {
-    color: "#7a7a7a",
-    fontWeight: 500,
-    fontSize: "18px",
-    textTransform: "uppercase",
-    letterSpacing: "0.06em",
-  },
-  cardSection: {
-    marginTop: 26,
-    background: "#fff",
-    borderRadius: "18px",
-    boxShadow: "0 10px 25px rgba(17, 38, 146, 0.12)",
-    padding: "20px 26px 26px 26px",
-  },
+
   table: {
     width: "100%",
-    borderCollapse: "separate",
-    borderSpacing: "0 6px",
+    borderCollapse: "collapse"
   },
+
   th: {
-    backgroundColor: "#171e2b",
-    color: "#fff",
-    fontWeight: 700,
-    fontSize: "19px",
-    padding: "14px 18px",
-    textAlign: "left",
-    borderTopLeftRadius: "10px",
-    borderTopRightRadius: "10px",
-    letterSpacing: "0.07em",
+    background: "#ffc72c",
+    color: "#232b32",
+    fontWeight: "700",
+    fontSize: "16px",
+    padding: "12px 14px",
+    textAlign: "left"
   },
+
   td: {
-    padding: "16px 18px",
-    background: "#fff",
-    fontSize: "18px",
+    padding: "14px",
+    backgroundColor: "#fff",
     borderTop: "1px solid #f0f0f0",
-    verticalAlign: "middle",
+    fontSize: "15px",
+    verticalAlign: "middle"
   },
+
   gradeInput: {
     padding: "6px",
-    fontSize: "16px",
+    fontSize: "14px",
     width: "70px",
-    borderRadius: "8px",
+    borderRadius: "6px",
     border: "1px solid #d8d9db",
-    outline: "none",
-    color: "#18202a",
-    textAlign: "center",
-    userSelect: "none",
+    outline: "none"
+  },
+
+  smallBtn: {
+    background: "#18202a",
+    color: "#ffc72c",
+    border: "none",
+    padding: "6px 10px",
+    borderRadius: 6,
+    cursor: "pointer",
+    fontWeight: 700
   }
 };
 
