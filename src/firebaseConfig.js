@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 
+// Sidebar items
 const sidebarItems = [
   { icon: "fa-home", label: "Dashboard", route: "/student-dashboard" },
   { icon: "fa-bolt", label: "Streaks", route: "/student-streaks" },
@@ -22,6 +23,7 @@ const sidebarItems = [
   { icon: "fa-sign-out-alt", label: "Logout", route: "/login" },
 ];
 
+// Static dummy data
 const groupMembers = [
   { name: "John Doe", role: "Leader" },
   { name: "Jane Smith", role: "Member" },
@@ -46,10 +48,11 @@ const StudentGroup = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState([]);      // now comes from Firestore
   const [message, setMessage] = useState("");
   const inputRef = useRef(null);
 
+  // Load Font Awesome once
   useEffect(() => {
     if (!document.getElementById("fa-cdn")) {
       const link = document.createElement("link");
@@ -61,6 +64,7 @@ const StudentGroup = () => {
     }
   }, []);
 
+  // Realtime listener to Firestore "groupMessages" collection
   useEffect(() => {
     const q = query(
       collection(db, "groupMessages"),
@@ -77,13 +81,14 @@ const StudentGroup = () => {
     return () => unsubscribe();
   }, []);
 
+  // Send message: write to Firestore
   const handleSend = async () => {
     const trimmed = message.trim();
     if (!trimmed) return;
 
     try {
       await addDoc(collection(db, "groupMessages"), {
-        sender: "Student",
+        sender: "Student",          // you can later use real user name / UID
         text: trimmed,
         createdAt: serverTimestamp(),
       });
@@ -130,7 +135,9 @@ const StudentGroup = () => {
               >
                 {m.name}
               </div>
-              <div style={{ color: "#999", fontSize: 18, marginTop: 2 }}>
+              <div
+                style={{ color: "#999", fontSize: 18, marginTop: 2 }}
+              >
                 {m.role}
               </div>
             </div>
@@ -143,11 +150,7 @@ const StudentGroup = () => {
             {messages.map((msg) => (
               <div key={msg.id} style={{ marginBottom: 8, color: "#222" }}>
                 <span
-                  style={{
-                    fontWeight: "bold",
-                    color: "#ffc72c",
-                    marginRight: 4,
-                  }}
+                  style={{ fontWeight: "bold", color: "#ffc72c", marginRight: 4 }}
                 >
                   {msg.sender || "User"}:
                 </span>
